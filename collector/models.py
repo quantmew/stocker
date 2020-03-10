@@ -12,19 +12,20 @@ class BaseModel(peewee.Model):
     class Meta:
         database = db
 
+# 货币
+class Currency(BaseModel):
+    uuid = peewee.CharField(primary_key=True, unique=True, max_length=36)
+    name = peewee.CharField(max_length=64)
+    enname = peewee.CharField(max_length=64)
+    symbol = peewee.CharField(max_length=16)
+
 # 交易所（上证）
 class Exchange(BaseModel):
     uuid = peewee.CharField(primary_key=True, unique=True, max_length=36)
     name = peewee.CharField(max_length=64)
     enname = peewee.CharField(max_length=128)
     symbol = peewee.CharField(max_length=128)
-
-# 
-class Currency(BaseModel):
-    uuid = peewee.CharField(primary_key=True, unique=True, max_length=36)
-    name = peewee.CharField(max_length=64)
-    enname = peewee.CharField(max_length=64)
-    symbol = peewee.CharField(max_length=16)
+    currency = peewee.ForeignKeyField(Currency, backref='exchanges') # 交易所使用何种货币
 
 # 市场（主板/中小板/创业板/科创板）
 class Market(BaseModel):
@@ -37,7 +38,8 @@ class Market(BaseModel):
 # 股票
 class Equities(BaseModel):
     uuid = peewee.CharField(primary_key=True, unique=True, max_length=36)
-    market = peewee.ForeignKeyField(Market, backref='equities') # 所属市场
+    exchange = peewee.ForeignKeyField(Exchange, backref='equities') # 所属市场
+    market = peewee.ForeignKeyField(Market, backref='equities') # 所属板块
     symbol = peewee.CharField(max_length=128) # 股票代码
     name = peewee.CharField(max_length=64) # 股票名称
     area = peewee.CharField(max_length=64) # 所在地域
@@ -45,7 +47,6 @@ class Equities(BaseModel):
     list_status = peewee.CharField(max_length=16) # 上市信息 L上市 D退市 P暂停上市
     list_date = peewee.DateTimeField() # 上市日期
     delist_date = peewee.DateTimeField() # 退市日期
-
 
 
 '''

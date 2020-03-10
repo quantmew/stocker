@@ -119,9 +119,14 @@ def stock_list():
         stock_obj = get_stock(driver, each_stock_url)
         stock_dataset.append(stock_obj)
 
-    with open('out.txt', 'w', encoding='utf-8') as f:
-        for each_stock in stock_dataset:
-            f.write(json.dumps(each_stock) + '\n')
+        exchange = models.Exchange.get(models.Exchange.name == '上海证券交易所')
+        models.Equities.get_or_create(
+            symbol=stock_obj['StockNo'],
+            defaults={
+                'uuid':uuid.uuid4(),
+                'exchange':exchange,
+                'name':stock_obj['StockName'],
+            })
 
     driver.quit()
 
