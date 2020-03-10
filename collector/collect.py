@@ -108,14 +108,14 @@ def stock_list():
 
     stock_url_list = []
     # 申万行业
-    # swhy_url_list = stock_lv1(driver)
-    # stock_url_list.extend(swhy_url_list)
+    swhy_url_list = stock_lv1(driver)
+    stock_url_list.extend(swhy_url_list)
     # 申万二级
-    swej_url_list = stock_lv2(driver)
-    stock_url_list.extend(swej_url_list)
+    # swej_url_list = stock_lv2(driver)
+    # stock_url_list.extend(swej_url_list)
 
     stock_dataset = []
-    for each_stock_url in swej_url_list:
+    for each_stock_url in swhy_url_list:
         stock_obj = get_stock(driver, each_stock_url)
         stock_dataset.append(stock_obj)
 
