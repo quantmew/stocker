@@ -6,6 +6,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from lxml import etree
 import time
 import json
+import random
 from datetime import datetime
 
 def get_stock(driver, url):
@@ -13,10 +14,26 @@ def get_stock(driver, url):
     driver.get(url)
     driver.implicitly_wait(10)
     tree = etree.HTML(driver.page_source)
+    # 判断url是否有效
+    jsxx = tree.xpath('//div[@class="title_bar"]/div/label[text()="检索结果"]')
+    if len(jsxx) > 0:
+        return None
+
+    # 检查是否退市
+    delist = tree.xpath('//div[@id="hq"]/div[@class="price_time"]/div[@id="closed" and text()="已退市"]')
+    if len(delist) > 0:
+        stock_obj['ListStatus'] = 'D'
+    else:
+        stock_obj['ListStatus'] = 'L'
+
     # 基本信息
-    stock_obj['StockName'] = tree.xpath('//h1[@id="stockName"]/i[@class="c8_name"]/text()')
+    if stock_obj['ListStatus'] == 'L':
+        stock_obj['StockName'] = tree.xpath('//h1[@id="stockName"]/i[@class="c8_name"]/text()')
+    else:
+        stock_obj['StockName'] = tree.xpath('//h1[@id="stockName"]/text()')
     if len(stock_obj['StockName']) > 0:
         stock_obj['StockName'] = stock_obj['StockName'][0]
+    
     stock_obj['StockNo'] = tree.xpath('//h1[@id="stockName"]/span/text()')
     if len(stock_obj['StockNo']) > 0:
         stock_obj['StockNo'] = stock_obj['StockNo'][0]
@@ -79,7 +96,31 @@ def get_stock(driver, url):
     RegCapital = company_panel.xpath('.//p/b[contains(text(),"注册资本")]/parent::p/text()')
     if len(RegCapital) > 0:
         stock_obj['RegCapital'] = int(float(RegCapital[0].replace('万元', '')) * 10000)
-    
+
+    # 行业板块
+    industry_page_url = tree.xpath('//div[@id="louver"]//ul/li/a[text()="所属行业"]/@href')
+    if len(industry_page_url) > 0:
+        industry_page_url = industry_page_url[0]
+    else:
+        return stock_obj
+    # 跳转到所属行业页面
+    driver.get(industry_page_url)
+    driver.implicitly_wait(10)
+    tree = etree.HTML(driver.page_source)
+    industry_name = tree.xpath('//tr/td[text()="所属行业板块"]/parent::tr/following-sibling::tr[2]/td[1]/text()')
+    if len(industry_name) > 0:
+        industry_name = industry_name[0]
+    if industry_name != '':
+        stock_obj['IndustryName'] = industry_name
+
+    # 概念板块
+    concept_name = tree.xpath('//div[@id="con02-0"]/table[2]/tbody/tr[position()>2]/td[1]/text()')
+    # 判断是否有概念板块列表
+    if '对不起' in concept_name:
+        stock_obj['ConceptName'] = []
+    else:
+        stock_obj['ConceptName'] = concept_name
+
     return stock_obj
 
 
@@ -175,24 +216,36 @@ def stock_list():
     # 申万行业
     swhy_url_list = stock_lv1(driver)
     stock_url_list.extend(swhy_url_list)
+    
     # 申万二级
     # swej_url_list = stock_lv2(driver)
     # stock_url_list.extend(swej_url_list)
 
+    random.shuffle(stock_url_list)
+
     stock_dataset = []
-    for each_stock_url in swhy_url_list:
+    for each_stock_url in stock_url_list:
         stock_obj = get_stock(driver, each_stock_url)
+        if stock_obj is None:
+            continue
         stock_dataset.append(stock_obj)
 
         exchange = models.Exchange.get(models.Exchange.name == '上海证券交易所')
         market = models.Market.get(models.Market.name == '主板')
-        models.Equities.get_or_create(
+        # 获取申万行业分类
+        sw_industry = models.ShenWanIndustry.get_or_none(
+            models.ShenWanIndustry.industry_name == stock_obj['IndustryName'],
+            models.ShenWanIndustry.level == 2)
+
+        # 获取或创建股票
+        equity, created = models.Equities.get_or_create(
             symbol=stock_obj['StockNo'],
             defaults={
                 'uuid': uuid.uuid4(),
                 'exchange': exchange,
                 'market': market,
                 'name': stock_obj['StockName'],
+                'list_status': stock_obj['ListStatus'],
                 'list_date': stock_obj['ListDate'],
                 'company_name': stock_obj['CompanyName'],
                 'main_business': stock_obj['MainBusiness'],
@@ -202,7 +255,21 @@ def stock_list():
                 'chairman': stock_obj['Chairman'],
                 'manager': stock_obj['Manager'],
                 'reg_capital': stock_obj['RegCapital'],
+                'industry': sw_industry,
             })
+        if not created:
+            equity.list_status = stock_obj['ListStatus']
+            equity.save()
+
+        # 创建概念板块
+        for each_concept_name in stock_obj['ConceptName']:
+            concept, created = models.ConceptMarket.get_or_create(
+                name=each_concept_name,
+                defaults={
+                    'uuid': uuid.uuid4()
+                })
+            # 因为一个股票所属概念会有重复
+            models.EquitiesConceptMarket.get_or_create(equity=equity, concept=concept)
 
     driver.quit()
 
