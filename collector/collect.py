@@ -6,15 +6,80 @@ from selenium.webdriver.common.action_chains import ActionChains
 from lxml import etree
 import time
 import json
+from datetime import datetime
 
 def get_stock(driver, url):
     stock_obj = {}
     driver.get(url)
     driver.implicitly_wait(10)
     tree = etree.HTML(driver.page_source)
+    # 基本信息
     stock_obj['StockName'] = tree.xpath('//h1[@id="stockName"]/i[@class="c8_name"]/text()')
+    if len(stock_obj['StockName']) > 0:
+        stock_obj['StockName'] = stock_obj['StockName'][0]
     stock_obj['StockNo'] = tree.xpath('//h1[@id="stockName"]/span/text()')
+    if len(stock_obj['StockNo']) > 0:
+        stock_obj['StockNo'] = stock_obj['StockNo'][0]
+        if stock_obj['StockNo'].startswith('(') and stock_obj['StockNo'].endswith(')'):
+            stock_obj['StockNo'] = stock_obj['StockNo'][1:-1]
 
+    # 公司概况
+    company_panel = tree.xpath('//div[@class="com_overview blue_d"]')
+    if len(company_panel) > 0:
+        company_panel = company_panel[0]
+    CompanyName = company_panel.xpath('.//p/b[contains(text(),"公司名称")]/parent::p/following-sibling::p[1]/text()')
+    if len(CompanyName) > 0:
+        stock_obj['CompanyName'] = CompanyName[0]
+    else:
+        stock_obj['CompanyName'] = None
+
+    MainBusiness = company_panel.xpath('.//p/b[contains(text(),"主营业务")]/parent::p/following-sibling::p[1]/text()')
+    if len(MainBusiness) > 0:
+        stock_obj['MainBusiness'] = MainBusiness[0]
+    else:
+        stock_obj['MainBusiness'] = None
+
+    Telephone = company_panel.xpath('.//p/b[contains(text(),"电　　话")]/parent::p/text()')
+    if len(Telephone) > 0:
+        stock_obj['Telephone'] = Telephone[0]
+    else:
+        stock_obj['Telephone'] = None
+
+    Fax = company_panel.xpath('.//p/b[contains(text(),"传　　真")]/parent::p/text()')
+    if len(Fax) > 0:
+        stock_obj['Fax'] = Fax[0]
+    else:
+        stock_obj['Fax'] = None
+
+    SetupDate = company_panel.xpath('.//p/b[contains(text(),"成立日期")]/parent::p/text()')
+    if len(SetupDate) > 0:
+        stock_obj['SetupDate'] = datetime.strptime(SetupDate[0], '%Y-%m-%d')
+    else:
+        stock_obj['SetupDate'] = None
+        
+    
+    ListDate = company_panel.xpath('.//p/b[contains(text(),"上市日期")]/parent::p/text()')
+    if len(ListDate) > 0:
+        stock_obj['ListDate'] = datetime.strptime(ListDate[0], '%Y-%m-%d')
+    else:
+        stock_obj['ListDate'] = None
+
+    Chairman = company_panel.xpath('.//p/b[contains(text(),"法人代表")]/parent::p/text()')
+    if len(Chairman) > 0:
+        stock_obj['Chairman'] = Chairman[0]
+    else:
+        stock_obj['Chairman'] = None
+
+    Manager = company_panel.xpath('.//p/b[contains(text(),"总 经 理")]/parent::p/text()')
+    if len(Manager) > 0:
+        stock_obj['Manager'] = Manager[0]
+    else:
+        stock_obj['Manager'] = None
+
+    RegCapital = company_panel.xpath('.//p/b[contains(text(),"注册资本")]/parent::p/text()')
+    if len(RegCapital) > 0:
+        stock_obj['RegCapital'] = int(float(RegCapital[0].replace('万元', '')) * 10000)
+    
     return stock_obj
 
 
@@ -120,12 +185,23 @@ def stock_list():
         stock_dataset.append(stock_obj)
 
         exchange = models.Exchange.get(models.Exchange.name == '上海证券交易所')
+        market = models.Market.get(models.Market.name == '主板')
         models.Equities.get_or_create(
             symbol=stock_obj['StockNo'],
             defaults={
-                'uuid':uuid.uuid4(),
-                'exchange':exchange,
-                'name':stock_obj['StockName'],
+                'uuid': uuid.uuid4(),
+                'exchange': exchange,
+                'market': market,
+                'name': stock_obj['StockName'],
+                'list_date': stock_obj['ListDate'],
+                'company_name': stock_obj['CompanyName'],
+                'main_business': stock_obj['MainBusiness'],
+                'telephone': stock_obj['Telephone'],
+                'fax': stock_obj['Fax'],
+                'setup_date': stock_obj['SetupDate'],
+                'chairman': stock_obj['Chairman'],
+                'manager': stock_obj['Manager'],
+                'reg_capital': stock_obj['RegCapital'],
             })
 
     driver.quit()
