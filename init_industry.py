@@ -2,6 +2,7 @@ import uuid
 import models
 
 if __name__ == "__main__":
+    models.db.connect()
     lv1 = [
         [210000, '采掘'],
         [220000, '化工'],
@@ -371,7 +372,7 @@ if __name__ == "__main__":
         [510101, '综合'],
     ]
 
-    models.db.connect()
+    # models.db.connect()
     models.db.create_tables([models.ShenWanIndustry])
 
     for each_lv1 in lv1:

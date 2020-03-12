@@ -7,7 +7,34 @@ from lxml import etree
 import time
 import json
 import random
+import re
 from datetime import datetime
+
+def first(lst):
+    ret = None
+    if len(lst) > 0:
+        ret = lst[0]
+    return ret
+
+def get_person(driver, url):
+    person_obj = {}
+    driver.get(url)
+    driver.implicitly_wait(10)
+    tree = etree.HTML(driver.page_source)
+
+    # 获取信息第一行
+    first_line = tree.xpath('//table[@id="Table1"]/tbody/tr[1]/td')
+
+    person_obj['name'] = first_line[0]
+    person_obj['gender'] = first_line[1]
+    person_obj['birth'] = first_line[2]
+    person_obj['education'] = first_line[3]
+    person_obj['nationality'] = first_line[4]
+
+    second_line = tree.xpath('//table[@id="Table1"]/tbody/tr[2]/td[2]')
+    person_obj['resume'] = second_line[0]
+
+    return person_obj
 
 def get_stock(driver, url):
     stock_obj = {}
@@ -97,11 +124,228 @@ def get_stock(driver, url):
     if len(RegCapital) > 0:
         stock_obj['RegCapital'] = int(float(RegCapital[0].replace('万元', '')) * 10000)
 
+    # 公司资料
+    company_info_url = tree.xpath('//div[@id="louver"]//ul/li/a[text()="公司简介"]/@href')
+    if len(company_info_url) > 0:
+        company_info_url = company_info_url[0]
+    else:
+        print('error: fail to get company url.')
+        return stock_obj
+    # 跳转到公司资料页面
+    driver.get(company_info_url)
+    driver.implicitly_wait(10)
+    tree = etree.HTML(driver.page_source)
+    # 公司名称
+    company_name = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "公司名称")]/following-sibling::td/text()')
+    if len(company_name) > 0:
+        company_name = company_name[0]
+    stock_obj['CompanyName'] = company_name
+
+    # 公司英文名称
+    company_enname = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "公司英文名称")]/following-sibling::td/text()')
+    if len(company_enname) > 0:
+        company_enname = company_enname[0]
+    stock_obj['CompanyEnname'] = company_enname
+
+    # 上市市场
+    list_market = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "上市市场")]/following-sibling::td[1]/text()')
+    if len(list_market) > 0:
+        list_market = list_market[0]
+    stock_obj['ListMarket'] = list_market
+
+    # 上市日期
+    list_date = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "上市日期")]/following-sibling::td[1]/a/text()')
+    if len(list_date) > 0:
+        list_date = list_date[0]
+    stock_obj['ListDate'] = datetime.strptime(list_date, '%Y-%m-%d')
+
+    # 发行价格
+    init_price = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "发行价格")]/following-sibling::td[1]/text()')
+    if len(init_price) > 0:
+        init_price = init_price[0]
+    stock_obj['InitPrice'] = init_price
+
+    # 主承销商
+    lead_underwriter = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "主承销商")]/following-sibling::td[1]/text()')
+    if len(lead_underwriter) > 0:
+        lead_underwriter = lead_underwriter[0]
+    stock_obj['LeadUnderwriter'] = lead_underwriter
+
+    # 成立日期
+    create_date = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "成立日期")]/following-sibling::td[1]/a/text()')
+    if len(create_date) > 0:
+        create_date = create_date[0]
+    stock_obj['CreateDate'] = datetime.strptime(create_date, '%Y-%m-%d')
+
+    # 注册资本
+    reg_capital = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "注册资本")]/following-sibling::td[1]/text()')
+    if len(reg_capital) > 0:
+        reg_capital = reg_capital[0]
+    stock_obj['RegCapital'] = reg_capital
+
+    # 机构类型
+    organization_type = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "机构类型")]/following-sibling::td[1]/text()'))
+    stock_obj['OrganizationType'] = organization_type
+
+    # 组织形式
+    organization_form = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "组织形式")]/following-sibling::td[1]/text()'))
+    stock_obj['OrganizationForm'] = organization_form
+
+    # 董事会秘书
+    board_secretary = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "董事会秘书")]/following-sibling::td[1]/text()'))
+    stock_obj['BoardSecretary'] = board_secretary
+
+    # 董秘电话
+    board_secretary_telephone = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "董秘电话")]/following-sibling::td[1]/text()'))
+    stock_obj['BoardSecretaryTelephone'] = board_secretary_telephone
+
+    # 董秘传真
+    board_secretary_fax = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "董秘传真")]/following-sibling::td[1]/text()'))
+    stock_obj['BoardSecretaryFax'] = board_secretary_fax
+
+    # 董秘邮箱
+    board_secretary_mail = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "董秘邮箱")]/following-sibling::td[1]/text()'))
+    stock_obj['BoardSecretaryMail'] = board_secretary_mail
+
+    # 公司电话
+    company_telephone = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "公司电话")]/following-sibling::td[1]/text()'))
+    stock_obj['CompanyTelephone'] = company_telephone
+
+    # 公司传真
+    company_fax = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "公司传真")]/following-sibling::td[1]/text()'))
+    stock_obj['CompanyFax'] = company_fax
+
+    # 公司邮箱
+    company_mail = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "公司邮箱")]/following-sibling::td[1]/text()'))
+    stock_obj['CompanyMail'] = company_mail
+
+    # 公司网址
+    company_website = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "公司网址")]/following-sibling::td[1]/text()'))
+    stock_obj['CompanyWebsite'] = company_website
+
+    # 邮政编码
+    zip_code = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "邮政编码")]/following-sibling::td[1]/text()'))
+    stock_obj['ZipCode'] = zip_code
+
+    # 注册地址
+    reg_address = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "注册地址")]/following-sibling::td[1]/text()')
+    if len(reg_address) > 0:
+        reg_address = reg_address[0]
+    stock_obj['RegAddress'] = reg_address
+
+    # 办公地址
+    office_address = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "办公地址")]/following-sibling::td[1]/text()')
+    if len(office_address) > 0:
+        office_address = office_address[0]
+    stock_obj['OfficeAddress'] = office_address
+
+    # 公司简介
+    company_description = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "公司简介")]/following-sibling::td[1]/text()')
+    if len(company_description) > 0:
+        company_description = company_description[0]
+    stock_obj['CompanyDescription'] = company_description
+
+    # 经营范围
+    business_scope = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "经营范围")]/following-sibling::td[1]/text()')
+    if len(business_scope) > 0:
+        business_scope = business_scope[0]
+    stock_obj['BusinessScope'] = business_scope
+
+    # 公司高管
+    company_executives_url = tree.xpath('//div[@id="louver"]//ul/li/a[text()="公司高管"]/@href')
+    if len(company_executives_url) > 0:
+        company_executives_url = company_executives_url[0]
+    else:
+        print('error: fail to get company executives url.')
+        return stock_obj
+    # 跳转到公司高管页面
+    driver.get(company_info_url)
+    driver.implicitly_wait(10)
+    tree = etree.HTML(driver.page_source)
+
+    # 历届高管成员
+    executive_info = []
+    executive_lines = tree.xpath('//table[@id="comInfo1"]//th[text()="历届高管成员"]/parent::tr/parent::thead/following-sibling::tbody/tr[position()>1]')
+    period_info = ''
+    for each_executive in executive_lines:
+        # 检查是否是第几届信息
+        each_period = each_executive.xpath('.//td[1]/div/text()')
+        if len(each_period) > 0 and '起始日期' in each_period[0]:
+            period_info = each_period[0]
+            continue
+        # 收集个人数据
+        person_url = each_executive.xpath('.//td[1]/div/a/@href')
+        if len(person_url) > 0:
+            person_url = person_url[0]
+
+        position = each_executive.xpath('.//td[2]/div/text()')
+        if len(position) > 0:
+            position = position[0]
+        start_date = each_executive.xpath('.//td[3]/div/text()')
+        if len(start_date) > 0:
+            start_date = datetime.strptime(start_date[0], '%Y-%m-%d')
+        end_date = each_executive.xpath('.//td[4]/div/text()')
+        if len(end_date) > 0:
+            end_date = datetime.strptime(end_date[0], '%Y-%m-%d')
+        executive_info.append([person_url, position, start_date, end_date, period_info])
+
+    # 历届董事会成员
+    period_info = ''
+    executive_lines = tree.xpath('//table[@id="comInfo1"]//th[text()="历届董事会成员"]/parent::tr/parent::thead/following-sibling::tbody/tr[position()>1]')
+    for each_executive in executive_lines:
+        # 检查是否是第几届信息
+        each_period = each_executive.xpath('.//td[1]/div/text()')
+        if len(each_period) > 0 and '起始日期' in each_period[0]:
+            period_info = each_period[0]
+            continue
+        # 收集任职数据
+        person_url = each_executive.xpath('.//td[1]/div/a/@href')
+        if len(person_url) > 0:
+            person_url = person_url[0]
+
+        position = each_executive.xpath('.//td[2]/div/text()')
+        if len(position) > 0:
+            position = position[0]
+        start_date = each_executive.xpath('.//td[3]/div/text()')
+        if len(start_date) > 0:
+            start_date = datetime.strptime(start_date[0], '%Y-%m-%d')
+        end_date = each_executive.xpath('.//td[4]/div/text()')
+        if len(end_date) > 0:
+            end_date = datetime.strptime(end_date[0], '%Y-%m-%d')
+        executive_info.append([person_url, position, start_date, end_date, period_info])
+
+    # 历届监事会成员
+    period_info = ''
+    executive_lines = tree.xpath('//table[@id="comInfo1"]//th[text()="历届监事会成员"]/parent::tr/parent::thead/following-sibling::tbody/tr[position()>1]')
+    for each_executive in executive_lines:
+        # 检查是否是第几届信息
+        each_period = each_executive.xpath('.//td[1]/div/text()')
+        if len(each_period) > 0 and '起始日期' in each_period[0]:
+            period_info = each_period[0]
+            continue
+        # 收集任职数据
+        person_url = each_executive.xpath('.//td[1]/div/a/@href')
+        if len(person_url) > 0:
+            person_url = person_url[0]
+
+        position = each_executive.xpath('.//td[2]/div/text()')
+        if len(position) > 0:
+            position = position[0]
+        start_date = each_executive.xpath('.//td[3]/div/text()')
+        if len(start_date) > 0:
+            start_date = datetime.strptime(start_date[0], '%Y-%m-%d')
+        end_date = each_executive.xpath('.//td[4]/div/text()')
+        if len(end_date) > 0:
+            end_date = datetime.strptime(end_date[0], '%Y-%m-%d')
+        executive_info.append([person_url, position, start_date, end_date, period_info])
+    
+    stock_obj['ExecutiveList'] = executive_info
     # 行业板块
     industry_page_url = tree.xpath('//div[@id="louver"]//ul/li/a[text()="所属行业"]/@href')
     if len(industry_page_url) > 0:
         industry_page_url = industry_page_url[0]
     else:
+        print('error: fail to get industry url.')
         return stock_obj
     # 跳转到所属行业页面
     driver.get(industry_page_url)
@@ -110,8 +354,9 @@ def get_stock(driver, url):
     industry_name = tree.xpath('//tr/td[text()="所属行业板块"]/parent::tr/following-sibling::tr[2]/td[1]/text()')
     if len(industry_name) > 0:
         industry_name = industry_name[0]
-    if industry_name != '':
         stock_obj['IndustryName'] = industry_name
+    else:
+        stock_obj['IndustryName'] = None
 
     # 概念板块
     concept_name = tree.xpath('//div[@id="con02-0"]/table[2]/tbody/tr[position()>2]/td[1]/text()')
@@ -233,9 +478,48 @@ def stock_list():
         exchange = models.Exchange.get(models.Exchange.name == '上海证券交易所')
         market = models.Market.get(models.Market.name == '主板')
         # 获取申万行业分类
-        sw_industry = models.ShenWanIndustry.get_or_none(
-            models.ShenWanIndustry.industry_name == stock_obj['IndustryName'],
-            models.ShenWanIndustry.level == 2)
+        sw_industry = None
+        if stock_obj['IndustryName'] is not None:
+            # 先找二类
+            sw_industry = models.ShenWanIndustry.get_or_none(
+                models.ShenWanIndustry.industry_name == stock_obj['IndustryName'],
+                models.ShenWanIndustry.level == 2)
+            # 二类找不到找三类
+            if sw_industry is None:
+                sw_industry = models.ShenWanIndustry.get_or_none(
+                models.ShenWanIndustry.industry_name == stock_obj['IndustryName'],
+                models.ShenWanIndustry.level == 3)
+
+        # 获取或创建公司信息
+        company, created = models.Company.get_or_create(
+            name=stock_obj['CompanyName'],
+            defaults={
+                'uuid': uuid.uuid4(),
+                'enname': stock_obj['CompanyEnname'],
+                'market': market,
+                'list_date': stock_obj['ListDate'],
+                'init_price': stock_obj['InitPrice'],
+                'lead_underwriter': stock_obj['LeadUnderwriter'],
+                'create_date': stock_obj['CreateDate'],
+                'reg_capital': stock_obj['RegCapital'],
+                'organization_type': stock_obj['OrganizationType'],
+                'organization_form': stock_obj['OrganizationForm'],
+                'board_secretary': stock_obj['BoardSecretary'],
+                'board_secretary_telephone': stock_obj['BoardSecretaryTelephone'],
+                'board_secretary_fax': stock_obj['BoardSecretaryFax'],
+                'board_secretary_mail': stock_obj['BoardSecretaryMail'],
+                'company_telephone': stock_obj['CompanyTelephone'],
+                'company_fax': stock_obj['CompanyFax'],
+                'company_mail': stock_obj['CompanyMail'],
+                'company_website': stock_obj['CompanyWebsite'],
+
+                'zip_code': stock_obj['ZipCode'],
+                'register_address': stock_obj['RegAddress'],
+                'office_address': stock_obj['OfficeAddress'],
+                'description': stock_obj['CompanyDescription'],
+                'business_scope': stock_obj['BusinessScope'],
+            })
+
 
         # 获取或创建股票
         equity, created = models.Equities.get_or_create(
@@ -256,10 +540,32 @@ def stock_list():
                 'manager': stock_obj['Manager'],
                 'reg_capital': stock_obj['RegCapital'],
                 'industry': sw_industry,
+                'company': company,
             })
-        if not created:
-            equity.list_status = stock_obj['ListStatus']
-            equity.save()
+
+        # 企业高管信息管理
+        for each_person in stock_obj['ExecutiveList']:
+            person_obj = get_person(driver, each_person[0])
+            person, created = models.Person.get_or_create(
+                name=person_obj['name'],
+                gender=person_obj['gender'],
+                birth=person_obj['birth'],
+                defaults={
+                    'education': person_obj['education'],
+                    'nationality': person_obj['nationality'],
+                    'resume': person_obj['resume'],
+                }
+            )
+
+            m = re.search('第([0-9]+)届', person_obj[4])
+            job, created = models.Tenure.get_or_create(
+                person=person,
+                company=company,
+                position=person_obj[1],
+                appointment_date=person_obj[2],
+                departure_date=person_obj[3],
+                period=int(m.group(1)),
+            )
 
         # 创建概念板块
         for each_concept_name in stock_obj['ConceptName']:
