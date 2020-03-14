@@ -50,40 +50,40 @@ class Person(BaseModel):
     uuid = peewee.UUIDField(primary_key=True, unique=True)
     name = peewee.CharField(max_length=64) # 姓名
     gender = peewee.CharField(max_length=32) # 性别
-    birth = peewee.CharField(max_length=32) # 出生日期
-    education = peewee.CharField(max_length=32) # 学历
-    nationality = peewee.CharField(max_length=64) # 国籍
-    resume  = peewee.TextField() # 简历
+    birth = peewee.CharField(max_length=32, null=True) # 出生日期
+    education = peewee.CharField(max_length=32, null=True) # 学历
+    nationality = peewee.CharField(max_length=64, null=True) # 国籍
+    resume  = peewee.TextField(null=True) # 简历
 
 # 公司信息
 class Company(BaseModel):
     uuid = peewee.UUIDField(primary_key=True, unique=True)
     name = peewee.CharField(max_length=256) # 公司名
     enname = peewee.CharField(max_length=256) # 公司英文名
-    market = peewee.CharField(max_length=128) # 上市市场
-    list_date = peewee.DateField() # 上市日期
-    init_price = peewee.CharField(max_length=128) # 发行价格
-    lead_underwriter = peewee.CharField(max_length=256) # 主承销商
-    create_date = peewee.DateField() # 成立日期
-    reg_capital = peewee.IntegerField() # 注册资本(元)
-    organization_type = peewee.CharField(max_length=128) # 机构类型
-    organization_form = peewee.CharField(max_length=128) # 组织形式
+    market = peewee.CharField(max_length=128, null=True) # 上市市场
+    list_date = peewee.DateField(null=True) # 上市日期
+    init_price = peewee.CharField(max_length=128, null=True) # 发行价格
+    lead_underwriter = peewee.CharField(max_length=256, null=True) # 主承销商
+    create_date = peewee.DateField(null=True) # 成立日期
+    reg_capital = peewee.IntegerField(null=True) # 注册资本(元)
+    organization_type = peewee.CharField(max_length=128, null=True) # 机构类型
+    organization_form = peewee.CharField(max_length=128, null=True) # 组织形式
 
-    board_secretary = peewee.CharField(max_length=128) # 董事会秘书
-    board_secretary_telephone = peewee.CharField(max_length=128) # 董秘电话
-    board_secretary_fax = peewee.CharField(max_length=128) # 董秘传真
-    board_secretary_mail = peewee.CharField(max_length=128) # 董秘电子邮件
+    board_secretary = peewee.CharField(max_length=128, null=True) # 董事会秘书
+    board_secretary_telephone = peewee.CharField(max_length=128, null=True) # 董秘电话
+    board_secretary_fax = peewee.CharField(max_length=128, null=True) # 董秘传真
+    board_secretary_mail = peewee.CharField(max_length=128, null=True) # 董秘电子邮件
 
-    company_telephone = peewee.CharField(max_length=128) # 公司电话
-    company_fax = peewee.CharField(max_length=128) # 公司传真
-    company_mail = peewee.CharField(max_length=128) # 公司邮件
-    company_website = peewee.CharField(max_length=128) # 公司网站
+    company_telephone = peewee.CharField(max_length=128, null=True) # 公司电话
+    company_fax = peewee.CharField(max_length=128, null=True) # 公司传真
+    company_mail = peewee.CharField(max_length=128, null=True) # 公司邮件
+    company_website = peewee.CharField(max_length=128, null=True) # 公司网站
 
-    zip_code = peewee.CharField(max_length=64) # 公司邮编
-    register_address = peewee.CharField(max_length=256) # 注册地址
-    office_address = peewee.CharField(max_length=256) # 办公地址
-    description = peewee.TextField() # 公司简介
-    business_scope = peewee.TextField() # 经营范围
+    zip_code = peewee.CharField(max_length=64, null=True) # 公司邮编
+    register_address = peewee.CharField(max_length=256, null=True) # 注册地址
+    office_address = peewee.CharField(max_length=256, null=True) # 办公地址
+    description = peewee.TextField(null=True) # 公司简介
+    business_scope = peewee.TextField(null=True) # 经营范围
 
 # 任职情况
 class Tenure(BaseModel):
@@ -116,11 +116,10 @@ class Equities(BaseModel):
     main_business = peewee.CharField(max_length=512) # 主营业务
     telephone = peewee.CharField(max_length=64, null=True) # 电话
     fax = peewee.CharField(max_length=64, null=True) # 传真
-    setup_date = peewee.DateField() # 成立日期
-    chairman = peewee.CharField(max_length=128) # 法人代表
+    setup_date = peewee.DateField(null=True) # 成立日期
+    chairman = peewee.CharField(max_length=128, null=True) # 法人代表
     manager = peewee.CharField(max_length=128, null=True) # 总经理
-    reg_capital = peewee.IntegerField() # 注册资本(元)
-
+    reg_capital = peewee.IntegerField(null=True) # 注册资本(元)
 
 # 概念板块链接
 class EquitiesConceptMarket(BaseModel):

@@ -23,17 +23,17 @@ def get_person(driver, url):
     tree = etree.HTML(driver.page_source)
 
     # 获取信息第一行
-    first_line = tree.xpath('//table[@id="Table1"]/tbody/tr[1]/td')
+    person_obj['name'] = first(tree.xpath('//table[@id="Table1"]/tbody/tr[1]/td[1]/div/text()'))
+    person_obj['gender'] = first(tree.xpath('//table[@id="Table1"]/tbody/tr[1]/td[2]/div/text()'))
+    person_obj['birth'] = first(tree.xpath('//table[@id="Table1"]/tbody/tr[1]/td[3]/div/text()'))
+    person_obj['education'] = first(tree.xpath('//table[@id="Table1"]/tbody/tr[1]/td[4]/div/text()'))
+    person_obj['nationality'] = first(tree.xpath('//table[@id="Table1"]/tbody/tr[1]/td[5]/div/text()'))
 
-    person_obj['name'] = first_line[0]
-    person_obj['gender'] = first_line[1]
-    person_obj['birth'] = first_line[2]
-    person_obj['education'] = first_line[3]
-    person_obj['nationality'] = first_line[4]
-
-    second_line = tree.xpath('//table[@id="Table1"]/tbody/tr[2]/td[2]')
-    person_obj['resume'] = second_line[0]
-
+    second_line = first(tree.xpath('//table[@id="Table1"]/tbody/tr[2]/td[2]/text()'))
+    if second_line is not None:
+        person_obj['resume'] = second_line.strip()
+    else:
+        person_obj['resume'] = None
     return person_obj
 
 def get_stock(driver, url):
@@ -148,39 +148,27 @@ def get_stock(driver, url):
     stock_obj['CompanyEnname'] = company_enname
 
     # 上市市场
-    list_market = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "上市市场")]/following-sibling::td[1]/text()')
-    if len(list_market) > 0:
-        list_market = list_market[0]
+    list_market = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "上市市场")]/following-sibling::td[1]/text()'))
     stock_obj['ListMarket'] = list_market
 
     # 上市日期
-    list_date = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "上市日期")]/following-sibling::td[1]/a/text()')
-    if len(list_date) > 0:
-        list_date = list_date[0]
+    list_date = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "上市日期")]/following-sibling::td[1]/a/text()'))
     stock_obj['ListDate'] = datetime.strptime(list_date, '%Y-%m-%d')
 
     # 发行价格
-    init_price = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "发行价格")]/following-sibling::td[1]/text()')
-    if len(init_price) > 0:
-        init_price = init_price[0]
+    init_price = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "发行价格")]/following-sibling::td[1]/text()'))
     stock_obj['InitPrice'] = init_price
 
     # 主承销商
-    lead_underwriter = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "主承销商")]/following-sibling::td[1]/text()')
-    if len(lead_underwriter) > 0:
-        lead_underwriter = lead_underwriter[0]
+    lead_underwriter = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "主承销商")]/following-sibling::td[1]/a/text()'))
     stock_obj['LeadUnderwriter'] = lead_underwriter
 
     # 成立日期
-    create_date = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "成立日期")]/following-sibling::td[1]/a/text()')
-    if len(create_date) > 0:
-        create_date = create_date[0]
+    create_date = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "成立日期")]/following-sibling::td[1]/a/text()'))
     stock_obj['CreateDate'] = datetime.strptime(create_date, '%Y-%m-%d')
 
     # 注册资本
-    reg_capital = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "注册资本")]/following-sibling::td[1]/text()')
-    if len(reg_capital) > 0:
-        reg_capital = reg_capital[0]
+    reg_capital = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "注册资本")]/following-sibling::td[1]/text()'))
     stock_obj['RegCapital'] = reg_capital
 
     # 机构类型
@@ -204,7 +192,7 @@ def get_stock(driver, url):
     stock_obj['BoardSecretaryFax'] = board_secretary_fax
 
     # 董秘邮箱
-    board_secretary_mail = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "董秘邮箱")]/following-sibling::td[1]/text()'))
+    board_secretary_mail = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "董秘电子邮箱")]/following-sibling::td[1]/text()'))
     stock_obj['BoardSecretaryMail'] = board_secretary_mail
 
     # 公司电话
@@ -216,11 +204,14 @@ def get_stock(driver, url):
     stock_obj['CompanyFax'] = company_fax
 
     # 公司邮箱
-    company_mail = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "公司邮箱")]/following-sibling::td[1]/text()'))
-    stock_obj['CompanyMail'] = company_mail
+    company_mail = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "公司电子邮箱")]/following-sibling::td[1]/a/text()'))
+    if company_mail is not None:
+        stock_obj['CompanyMail'] = company_mail.strip()
+    else:
+        stock_obj['CompanyMail'] = None
 
     # 公司网址
-    company_website = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "公司网址")]/following-sibling::td[1]/text()'))
+    company_website = first(tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "公司网址")]/following-sibling::td[1]/a/@href'))
     stock_obj['CompanyWebsite'] = company_website
 
     # 邮政编码
@@ -243,7 +234,9 @@ def get_stock(driver, url):
     company_description = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "公司简介")]/following-sibling::td[1]/text()')
     if len(company_description) > 0:
         company_description = company_description[0]
-    stock_obj['CompanyDescription'] = company_description
+        stock_obj['CompanyDescription'] = company_description.strip()
+    else:
+        stock_obj['CompanyDescription'] = None
 
     # 经营范围
     business_scope = tree.xpath('//div[@id="con02-0"]/table[@id="comInfo1"]//td[contains(text(), "经营范围")]/following-sibling::td[1]/text()')
@@ -259,7 +252,7 @@ def get_stock(driver, url):
         print('error: fail to get company executives url.')
         return stock_obj
     # 跳转到公司高管页面
-    driver.get(company_info_url)
+    driver.get(company_executives_url)
     driver.implicitly_wait(10)
     tree = etree.HTML(driver.page_source)
 
@@ -274,19 +267,21 @@ def get_stock(driver, url):
             period_info = each_period[0]
             continue
         # 收集个人数据
-        person_url = each_executive.xpath('.//td[1]/div/a/@href')
-        if len(person_url) > 0:
-            person_url = person_url[0]
+        person_url = first(each_executive.xpath('.//td[1]/div/a/@href'))   
 
-        position = each_executive.xpath('.//td[2]/div/text()')
-        if len(position) > 0:
-            position = position[0]
-        start_date = each_executive.xpath('.//td[3]/div/text()')
-        if len(start_date) > 0:
-            start_date = datetime.strptime(start_date[0], '%Y-%m-%d')
-        end_date = each_executive.xpath('.//td[4]/div/text()')
-        if len(end_date) > 0:
-            end_date = datetime.strptime(end_date[0], '%Y-%m-%d')
+        position = first(each_executive.xpath('.//td[2]/div/text()'))
+        start_date = first(each_executive.xpath('.//td[3]/div/text()'))
+        if start_date is not None:
+            if start_date == '--':
+                start_date = None
+            else:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = first(each_executive.xpath('.//td[4]/div/text()'))
+        if end_date is not None:
+            if end_date == '--':
+                end_date = None
+            else:
+                end_date = datetime.strptime(end_date, '%Y-%m-%d')
         executive_info.append([person_url, position, start_date, end_date, period_info])
 
     # 历届董事会成员
@@ -299,19 +294,21 @@ def get_stock(driver, url):
             period_info = each_period[0]
             continue
         # 收集任职数据
-        person_url = each_executive.xpath('.//td[1]/div/a/@href')
-        if len(person_url) > 0:
-            person_url = person_url[0]
+        person_url = first(each_executive.xpath('.//td[1]/div/a/@href'))   
 
-        position = each_executive.xpath('.//td[2]/div/text()')
-        if len(position) > 0:
-            position = position[0]
-        start_date = each_executive.xpath('.//td[3]/div/text()')
-        if len(start_date) > 0:
-            start_date = datetime.strptime(start_date[0], '%Y-%m-%d')
-        end_date = each_executive.xpath('.//td[4]/div/text()')
-        if len(end_date) > 0:
-            end_date = datetime.strptime(end_date[0], '%Y-%m-%d')
+        position = first(each_executive.xpath('.//td[2]/div/text()'))
+        start_date = first(each_executive.xpath('.//td[3]/div/text()'))
+        if start_date is not None:
+            if start_date == '--':
+                start_date = None
+            else:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = first(each_executive.xpath('.//td[4]/div/text()'))
+        if end_date is not None:
+            if end_date == '--':
+                end_date = None
+            else:
+                end_date = datetime.strptime(end_date, '%Y-%m-%d')
         executive_info.append([person_url, position, start_date, end_date, period_info])
 
     # 历届监事会成员
@@ -324,19 +321,21 @@ def get_stock(driver, url):
             period_info = each_period[0]
             continue
         # 收集任职数据
-        person_url = each_executive.xpath('.//td[1]/div/a/@href')
-        if len(person_url) > 0:
-            person_url = person_url[0]
+        person_url = first(each_executive.xpath('.//td[1]/div/a/@href'))   
 
-        position = each_executive.xpath('.//td[2]/div/text()')
-        if len(position) > 0:
-            position = position[0]
-        start_date = each_executive.xpath('.//td[3]/div/text()')
-        if len(start_date) > 0:
-            start_date = datetime.strptime(start_date[0], '%Y-%m-%d')
-        end_date = each_executive.xpath('.//td[4]/div/text()')
-        if len(end_date) > 0:
-            end_date = datetime.strptime(end_date[0], '%Y-%m-%d')
+        position = first(each_executive.xpath('.//td[2]/div/text()'))
+        start_date = first(each_executive.xpath('.//td[3]/div/text()'))
+        if start_date is not None:
+            if start_date == '--':
+                start_date = None
+            else:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = first(each_executive.xpath('.//td[4]/div/text()'))
+        if end_date is not None:
+            if end_date == '--':
+                end_date = None
+            else:
+                end_date = datetime.strptime(end_date, '%Y-%m-%d')
         executive_info.append([person_url, position, start_date, end_date, period_info])
     
     stock_obj['ExecutiveList'] = executive_info
@@ -399,6 +398,8 @@ def stock_lv1(driver):
                 next_page_button.click()
                 driver.implicitly_wait(3)
             except selenium.common.exceptions.NoSuchElementException:
+                break
+            except selenium.common.exceptions.StaleElementReferenceException:
                 break
         
     return url_list
@@ -469,7 +470,19 @@ def stock_list():
     random.shuffle(stock_url_list)
 
     stock_dataset = []
+    filter_url = False
     for each_stock_url in stock_url_list:
+        # 过滤已经爬取的url
+        # http://biz.finance.sina.com.cn/suggest/lookup_n.php?q=sz000993
+        if filter_url:
+            m = re.search(r'http://biz\.finance\.sina\.com\.cn/suggest/lookup_n\.php\?q=([a-z]{2})([0-9]{6})', each_stock_url)
+            e = models.Equities.get_or_none(
+                symbol=f'{m.group(2)}.{m.group(1).upper()}'
+            )
+            # print(f'skip: {m.group(2)}.{m.group(1).upper()}\n')
+            if e is not None:
+                continue
+        # 开始爬取该股票
         stock_obj = get_stock(driver, each_stock_url)
         if stock_obj is None:
             continue
@@ -520,6 +533,11 @@ def stock_list():
                 'business_scope': stock_obj['BusinessScope'],
             })
 
+        if not created:
+            company.board_secretary_mail = stock_obj['BoardSecretaryMail']
+            company.company_mail = stock_obj['CompanyMail']
+            company.company_website = stock_obj['CompanyWebsite']
+            company.save()
 
         # 获取或创建股票
         equity, created = models.Equities.get_or_create(
@@ -544,27 +562,50 @@ def stock_list():
             })
 
         # 企业高管信息管理
+        # 按照url去重
+        person_list = []
+        url_dict = {}
         for each_person in stock_obj['ExecutiveList']:
-            person_obj = get_person(driver, each_person[0])
+            if each_person[0] not in url_dict:
+                url_dict[each_person[0]] = each_person
+
+        for url, each_person in url_dict.items():
+            person_list.append(each_person)
+        
+        # 遍历高管信息
+        for each_person in person_list:
+            if each_person[0] is None:
+                continue
+            person_obj = get_person(driver, 'http://vip.stock.finance.sina.com.cn' + each_person[0])
+            if person_obj['name'] is None:
+                print('person name can not be null, person: ' + str(person_obj))
+                continue
             person, created = models.Person.get_or_create(
                 name=person_obj['name'],
                 gender=person_obj['gender'],
                 birth=person_obj['birth'],
                 defaults={
+                    'uuid': uuid.uuid4(),
                     'education': person_obj['education'],
                     'nationality': person_obj['nationality'],
                     'resume': person_obj['resume'],
                 }
             )
 
-            m = re.search('第([0-9]+)届', person_obj[4])
+            m = re.search('第([0-9]+)届', each_person[4])
+            person_period = None
+            if m is not None:
+                person_period = int(m.group(1))
             job, created = models.Tenure.get_or_create(
                 person=person,
                 company=company,
-                position=person_obj[1],
-                appointment_date=person_obj[2],
-                departure_date=person_obj[3],
-                period=int(m.group(1)),
+                position=each_person[1],
+                appointment_date=each_person[2],
+                departure_date=each_person[3],
+                period=person_period,
+                defaults={
+                    'uuid': uuid.uuid4(),
+                }
             )
 
         # 创建概念板块
