@@ -3,6 +3,10 @@ from lxml import etree
 import peewee
 import datetime
 import requests
+import uuid
+import time
+import random
+from decimal import *
 from models import *
 
 周六 = 6
@@ -31,6 +35,7 @@ if __name__ == "__main__":
         当前日期 = 开始日期
         一天 = datetime.timedelta(days=1)
         while 当前日期 <= 结束日期:
+            time.sleep(random.randint(1,10))
             if 当前日期.isoweekday() in [周六, 周日]:
                 当前日期 += 一天
                 continue
@@ -41,9 +46,11 @@ if __name__ == "__main__":
                 页面.encoding='gb2312'
                 print(链接)
                 网页语法树 = etree.HTML(页面.text)
+                if 网页语法树 is None:
+                    continue
                 错误信息 = 取第一个元素(网页语法树.xpath('//div[contains(text(),"输入的代码有误或没有交易数据")]'))
                 
-                if 错误信息 is None:
+                if 错误信息 is not None:
                     break
 
                 数据 = 网页语法树.xpath('//table[@id="datatbl"]/tbody/tr')
@@ -56,12 +63,26 @@ if __name__ == "__main__":
                     价格变动 = 取第一个元素(每一行数据.xpath('./td[2]/text()'))
                     成交量 = 取第一个元素(每一行数据.xpath('./td[3]/text()'))
                     成交额 = 取第一个元素(每一行数据.xpath('./td[4]/text()'))
-                    性质 = 取第一个元素(每一行数据.xpath('./th[2]/*[name()="h6" or name()="h5"]/text()'))
+                    性质 = 取第一个元素(每一行数据.xpath('./th[2]/*[name()="h6" or name()="h5" or name()="h1"]/text()'))
+
+                    时, 分, 秒 = 成交时间.split(':')
+                    成交价 = Decimal(成交价)
+                    if '--' in 价格变动:
+                        价格变动 = Decimal(0)
+                    else:
+                        价格变动 = Decimal(价格变动)
+                    成交量 = int(成交量)
+                    成交额 = Decimal(成交额.replace(',', ''))
 
                     交易对象, 是否创建 = Transaction.get_or_create(
                         equity = 股票,
-                        time = 成交时间,
+                        time = datetime.datetime(
+                            当前日期.year,
+                            当前日期.month,
+                            当前日期.day,
+                            int(时), int(分), int(秒)),
                         defaults = {
+                            'uuid': uuid.uuid4(),
                             'price': 成交价,
                             'price_change': 价格变动,
                             'volume': 成交量,
