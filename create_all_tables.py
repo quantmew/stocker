@@ -18,5 +18,6 @@ if __name__ == "__main__":
         Tenure,
         Equities,
         EquitiesConceptMarket,
+        Transaction,
         ]
     )

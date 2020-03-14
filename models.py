@@ -129,6 +129,17 @@ class EquitiesConceptMarket(BaseModel):
     class Meta:
         primary_key = peewee.CompositeKey('equity', 'concept')
 
+# 成交明细
+class Transaction(BaseModel):
+    uuid = peewee.UUIDField(primary_key=True, unique=True)
+    equity = peewee.ForeignKeyField(Equities, backref='transaction', index = True)
+    time = peewee.DateTimeField(index = True)
+    price = peewee.DecimalField(max_digits=14, decimal_places=3) # 成交价
+    price_change = peewee.DecimalField(max_digits=14, decimal_places=3) # 价格变动
+    volume = peewee.IntegerField() # 成交量(手)
+    turnover = peewee.DecimalField(max_digits=14, decimal_places=3) # 成交额(元)
+    kind = peewee.CharField(max_length=16)# 性质(买盘、买盘、中性盘)
+
 # k线数据
 class KData(BaseModel):
     uuid = peewee.UUIDField(primary_key=True, unique=True)

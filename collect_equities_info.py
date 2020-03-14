@@ -8,6 +8,7 @@ import time
 import json
 import random
 import re
+import tqdm
 from datetime import datetime
 
 def first(lst):
@@ -471,7 +472,7 @@ def stock_list():
 
     stock_dataset = []
     filter_url = False
-    for each_stock_url in stock_url_list:
+    for each_stock_url in tqdm.tqdm(iterable=stock_url_list, ascii=True):
         # 过滤已经爬取的url
         # http://biz.finance.sina.com.cn/suggest/lookup_n.php?q=sz000993
         if filter_url:
