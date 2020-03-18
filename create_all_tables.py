@@ -19,5 +19,6 @@ if __name__ == "__main__":
         Equities,
         EquitiesConceptMarket,
         Transaction,
+        KDataDay,
         ]
     )

@@ -141,14 +141,22 @@ class Transaction(BaseModel):
     kind = peewee.CharField(max_length=16)# 性质(买盘、买盘、中性盘)
 
 # k线数据
-class KData(BaseModel):
+class KDataDay(BaseModel):
     uuid = peewee.UUIDField(primary_key=True, unique=True)
-    time = peewee.DateTimeField() # 日期
-    code = peewee.ForeignKeyField(Equities, backref='kdata') # 股票代码
-    open_price = peewee.IntegerField() # 开盘价
-    high_price = peewee.IntegerField() # 最高价
-    low_price = peewee.IntegerField() # 最低价
-    close_price = peewee.IntegerField() # 今收盘价
+    date = peewee.DateField(index = True) # 日期
+    equity = peewee.ForeignKeyField(Equities, backref='kdata', index = True) # 股票代码
+    open_price = peewee.DecimalField(max_digits=14, decimal_places=3) # 开盘价
+    high_price = peewee.DecimalField(max_digits=14, decimal_places=3) # 最高价
+    low_price = peewee.DecimalField(max_digits=14, decimal_places=3) # 最低价
+    close_price = peewee.DecimalField(max_digits=14, decimal_places=3) # 今收盘价
     volume = peewee.IntegerField()	# 成交数量
-    amount = peewee.IntegerField()	# 成交金额
+    amount = peewee.DecimalField(max_digits=14, decimal_places=3)	# 成交金额
     adjustflag = peewee.IntegerField() # 复权状态, 复权类型，默认不复权：1；2：后复权；3：前复权
+    turn = peewee.DecimalField(max_digits=12, decimal_places=6, null=True) # 换手率
+    tradestatus = peewee.IntegerField(null=True) # 交易状态 (1：正常交易 0：停牌）
+    pctChg = peewee.DecimalField(max_digits=12, decimal_places=6, null=True) # 涨跌幅
+    peTTM = peewee.DecimalField(max_digits=12, decimal_places=6, null=True) # 滚动市盈率
+    pbMRQ = peewee.DecimalField(max_digits=12, decimal_places=6, null=True) # 市净率
+    psTTM = peewee.DecimalField(max_digits=12, decimal_places=6, null=True) # 滚动市销率
+    pcfNcfTTM = peewee.DecimalField(max_digits=12, decimal_places=6, null=True) # 滚动市现率
+    isST = peewee.IntegerField(null=True) # 是否ST股，1是，0否

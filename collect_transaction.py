@@ -115,7 +115,10 @@ async def get_stock_history_date(obj_list, req):
         else:
             价格变动 = Decimal(价格变动)
         成交量 = int(成交量)
-        成交额 = Decimal(成交额.replace(',', ''))
+        if 成交额 is None:
+            成交额 = Decimal(0)
+        else:
+            成交额 = Decimal(成交额.replace(',', ''))
 
         交易对象, 是否创建 = Transaction.get_or_create(
             equity = 股票,
