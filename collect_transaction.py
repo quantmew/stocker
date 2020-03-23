@@ -77,7 +77,7 @@ async def get_a_stock_transaction(stock):
         if 当前日期.isoweekday() in [周六, 周日]:
             当前日期 += 一天
             continue
-        csv_filename = csv_dir+f'{新浪链接股票编号}+{当前日期.strftime("%y-%m-%d")}.csv'
+        csv_filename = csv_dir+f'{新浪链接股票编号}+{当前日期.strftime("%Y-%m-%d")}.csv'
         if os.path.exists(csv_filename):
             当前日期 += 一天
             continue
@@ -141,6 +141,16 @@ async def get_a_stock_transaction(stock):
                 else:
                     成交额 = Decimal(成交额.replace(',', ''))
 
+                def kind_to_en(kind):
+                    if kind == '买盘':
+                        return 'B'
+                    elif kind == '卖盘':
+                        return 'S'
+                    elif kind == '中性盘':
+                        return 'N'
+                    else:
+                        return None
+
                 data.append((
                     新浪链接股票编号,
                     datetime.datetime(
@@ -152,7 +162,7 @@ async def get_a_stock_transaction(stock):
                     价格变动,
                     成交量,
                     成交额,
-                    性质,
+                    kind_to_en(性质),
                 ))
 
             页码 += 1
