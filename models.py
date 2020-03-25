@@ -5,7 +5,7 @@ from playhouse.db_url import connect
 
 # Connect to the database URL defined in the environment, falling
 # back to a local Sqlite database if no database URL is specified.
-db = connect('mysql://root:@localhost:3306/stoker')
+db = connect('mysql://root:QAZqaz1234@localhost:3306/stocker')
 
 class BaseModel(peewee.Model):
     """A base model that will use our MySQL database"""

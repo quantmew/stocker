@@ -15,14 +15,16 @@ from models import *
 import h5py
 import csv
 import os
+import get_proxy
 
 周六 = 6
 周日 = 7
 csv_dir = "./transaction/"
-obj_list = Queue()
 
 proxies = { "http": "http://127.0.0.1:10805", "https": "http://127.0.0.1:10805"}
 headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36'}
+
+ips = get_proxy.ProxyPool('ip.txt')
 
 # logging
 logger = logging.getLogger(__name__)
@@ -42,25 +44,41 @@ def 取第一个元素(数组):
 
     return 返回值
 
+def kind_to_en(kind):
+    if kind == '买盘':
+        return 'B'
+    elif kind == '卖盘':
+        return 'S'
+    elif kind == '中性盘':
+        return 'N'
+    else:
+        return None
 
-def request_get_wrapper(url):
-    return requests.get(url, proxies=proxies, headers=headers, timeout=15)
 
-async def async_get(url):
-    loop = asyncio.get_running_loop()
+def request_get_wrapper(url, proxies_obj):
+    if proxies_obj is None:
+        return requests.get(url, headers=headers, timeout=15)
+    else:
+        return requests.get(url, proxies=proxies_obj, headers=headers, timeout=15)
 
-    future = loop.run_in_executor(
-        None,
-        request_get_wrapper,
-        url)
-    response = await future
-
-    return response
+def async_get(url, proxies_obj=None):
+    if proxies_obj is None:
+        return requests.get(url, headers=headers, timeout=15)
+    else:
+        return requests.get(url, proxies=proxies_obj, headers=headers, timeout=15)
 
 def get_stock_number(stock):
     六位编号, 交易所缩写 = stock.symbol.split('.')
     新浪链接股票编号 = 交易所缩写.lower() + 六位编号
     return 新浪链接股票编号
+
+def is_banned(page):
+    # 判断封禁
+    page.encoding='utf-8'
+    if '拒绝访问' in page.text:
+        return True
+    else:
+        return False
 
 async def get_a_stock_transaction(stock):
     新浪链接股票编号 = get_stock_number(stock)
@@ -82,18 +100,27 @@ async def get_a_stock_transaction(stock):
             当前日期 += 一天
             continue
         data = []
+        data_complete = False
 
         页码 = 1
         while True:
+            time.sleep(random.randint(1,2))
+
             链接 = f'http://market.finance.sina.com.cn/transHis.php?symbol={新浪链接股票编号}&date={当前日期.strftime("%Y-%m-%d")}&page={str(页码)}'
             页面 = None
             try:
-                页面 = await async_get(链接)
+                proxy_obj = ips.get_url()
+                页面 = async_get(链接, {'http': get_proxy.get_proxy_url(proxy_obj)})
             except Exception as e:
+                ips.bad_url(proxy_obj)
                 logger.error('requests.exceptions.ConnectionError' + str(e))
-                break
+                continue
+            if 页面.status_code != 200:
+                ips.bad_url(proxy_obj)
+                logger.error('requests.exceptions.ConnectionError with status code' + str(页面.status_code))
+                continue
             if 页面 is None:
-                break
+                continue
                     
             logger.info(链接)
             页面.encoding='gb2312'
@@ -101,22 +128,24 @@ async def get_a_stock_transaction(stock):
 
             if 网页语法树 is None:
                 logger.error('语法树解析失败')
-
-                # 判断封禁
-                页面.encoding='utf-8'
-                if '拒绝访问' in 页面.text:
-                    logger.fatal('ip已被新浪封禁')
-                break
+                continue
+            
+            # 判断封禁
+            if is_banned(页面):
+                logger.fatal('ip已被新浪封禁')
+                continue
 
             # 真的没有数据了
             错误信息 = 取第一个元素(网页语法树.xpath('//div[contains(text(),"输入的代码有误或没有交易数据")]'))
             
             if 错误信息 is not None:
+                data_complete = True
                 break
             
             # 没有数据了
             数据 = 网页语法树.xpath('//table[@id="datatbl"]/tbody/tr')
             if len(数据) == 0:
+                data_complete = True
                 break
 
             for 每一行数据 in 数据:
@@ -141,16 +170,6 @@ async def get_a_stock_transaction(stock):
                 else:
                     成交额 = Decimal(成交额.replace(',', ''))
 
-                def kind_to_en(kind):
-                    if kind == '买盘':
-                        return 'B'
-                    elif kind == '卖盘':
-                        return 'S'
-                    elif kind == '中性盘':
-                        return 'N'
-                    else:
-                        return None
-
                 data.append((
                     新浪链接股票编号,
                     datetime.datetime(
@@ -167,11 +186,12 @@ async def get_a_stock_transaction(stock):
 
             页码 += 1
 
-        with open(csv_filename,'w', newline='', encoding='utf-8') as f:
-            csv_write = csv.writer(f)
-            csv_head = ["stock_symbol","datetime", "price", "price_change", "volume", "turnover", "kind"]
-            csv_write.writerow(csv_head)
-            csv_write.writerows(data)
+        if data_complete:
+            with open(csv_filename,'w', newline='', encoding='utf-8') as f:
+                csv_write = csv.writer(f)
+                csv_head = ["stock_symbol","datetime", "price", "price_change", "volume", "turnover", "kind"]
+                csv_write.writerow(csv_head)
+                csv_write.writerows(data)
 
         当前日期 += 一天
 

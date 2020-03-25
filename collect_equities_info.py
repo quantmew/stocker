@@ -3,6 +3,7 @@ import models
 import selenium
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.chrome.options import Options
 from lxml import etree
 import time
 import json
@@ -455,7 +456,10 @@ def stock_lv2(driver):
 def stock_list():
     main_url = 'http://vip.stock.finance.sina.com.cn/mkt/'
 
-    driver = webdriver.Chrome()
+    chrome_options = Options()
+    chrome_options.add_argument('--headless')
+
+    driver = webdriver.Chrome(chrome_options=chrome_options)
     driver.get(main_url)
     driver.implicitly_wait(10)
 
