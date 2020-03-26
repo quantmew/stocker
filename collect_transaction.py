@@ -9,6 +9,7 @@ import time
 import random
 import tqdm
 import logging
+import datetime
 from multiprocessing import Queue
 from decimal import *
 from models import *
@@ -33,6 +34,53 @@ handler = logging.FileHandler('transaction_collect.log', mode='a', encoding='utf
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+
+
+def check_data_complete(path):
+    # 读取csv至字典
+    csvFile = open(path, "r", encoding="utf-8")
+    reader = csv.reader(csvFile)
+
+    # 建立空字典
+    result = []
+    for item in reader:
+        # 忽略第一行
+        if reader.line_num == 1:
+            continue
+        result.append(item)
+
+    csvFile.close()
+
+    d = datetime.datetime.strptime(result[-1][1], '%Y-%m-%d %H:%M:%S')
+    if d.time() <= datetime.time(9, 30, 0):
+        return True
+    else:
+        return False
+
+def read_data(path):
+    # 读取csv
+    csvFile = open(path, "r", encoding="utf-8")
+    reader = csv.reader(csvFile)
+
+    # 建立空列表
+    result = []
+    for item in reader:
+        # 忽略第一行
+        if reader.line_num == 1:
+            continue
+        result.append(item)
+
+    csvFile.close()
+    return result
+
+def is_record_in(record, data):
+    for each_record in data:
+        if record[0] == each_record[0] and \
+            record[1].strftime('%Y-%m-%d %H:%M:%S') == each_record[1] and \
+            str(record[1]) == each_record[2]:
+            return True
+
+    return False
 
 
 def 取第一个元素(数组):
@@ -96,7 +144,7 @@ async def get_a_stock_transaction(stock):
             当前日期 += 一天
             continue
         csv_filename = csv_dir+f'{新浪链接股票编号}+{当前日期.strftime("%Y-%m-%d")}.csv'
-        if os.path.exists(csv_filename):
+        if os.path.exists(csv_filename) and check_data_complete(csv_filename):
             当前日期 += 一天
             continue
         data = []
@@ -116,8 +164,12 @@ async def get_a_stock_transaction(stock):
                 logger.error('requests.exceptions.ConnectionError' + str(e))
                 continue
             if 页面.status_code != 200:
-                ips.bad_url(proxy_obj)
-                logger.error('requests.exceptions.ConnectionError with status code' + str(页面.status_code))
+                if 页面.status_code == 456:
+                    # 判断封禁
+                    logger.fatal('ip已被新浪封禁')
+                else:
+                    ips.bad_url(proxy_obj)
+                    logger.error('requests.exceptions.ConnectionError with status code:' + str(页面.status_code))
                 continue
             if 页面 is None:
                 continue
@@ -130,17 +182,20 @@ async def get_a_stock_transaction(stock):
                 logger.error('语法树解析失败')
                 continue
             
-            # 判断封禁
+            # 二次判断封禁
             if is_banned(页面):
                 logger.fatal('ip已被新浪封禁')
                 continue
 
-            # 真的没有数据了
+            # 没有数据了(可能是假的)
             错误信息 = 取第一个元素(网页语法树.xpath('//div[contains(text(),"输入的代码有误或没有交易数据")]'))
             
-            if 错误信息 is not None:
+            if 错误信息 is not None and 页码 == 1:
                 data_complete = True
                 break
+            elif 错误信息 is not None and 页码 != 1:
+                logger.warning('May be fake format error, try again later.')
+                continue
             
             # 没有数据了
             数据 = 网页语法树.xpath('//table[@id="datatbl"]/tbody/tr')
@@ -186,7 +241,7 @@ async def get_a_stock_transaction(stock):
 
             页码 += 1
 
-        if data_complete:
+        if data_complete and len(data) != 0:
             with open(csv_filename,'w', newline='', encoding='utf-8') as f:
                 csv_write = csv.writer(f)
                 csv_head = ["stock_symbol","datetime", "price", "price_change", "volume", "turnover", "kind"]

@@ -457,7 +457,7 @@ def stock_list():
     main_url = 'http://vip.stock.finance.sina.com.cn/mkt/'
 
     chrome_options = Options()
-    chrome_options.add_argument('--headless')
+    # chrome_options.add_argument('--headless')
 
     driver = webdriver.Chrome(chrome_options=chrome_options)
     driver.get(main_url)
